@@ -1,0 +1,60 @@
+import pandas as pd
+import matplotlib.pyplot as plt
+import numpy as np
+import os
+
+from google.colab import drive
+drive.mount('/content/drive')
+
+base_dir = '/content/drive/MyDrive/Time Series Classification/Sine_Map'
+os.makedirs(base_dir, exist_ok=True)
+
+
+#Sine Map
+def sine_map(a, x0, n):
+    x = x0
+    sequence = [x]
+    for _ in range(n - 1):
+        x = a * np.sin(np.pi * x)
+        sequence.append(x)
+    return sequence
+
+# List of control parameters
+a_values = [2.0, 2.032, 2.064, 2.096, 2.128, 2.16, 2.192, 2.224, 2.256, 2.288, 2.32, 2.352, 2.384, 2.416, 2.448, 2.48]
+
+
+# List of initial conditions
+x0_values = [ -1.0, -0.857, -0.714,-0.571, -0.428, -0.285,-0.142, 0.001, 0.144, 0.287,0.43, 0.573, 0.716, 0.859]
+
+
+# Number of iterations
+iterations_list = [100, 150, 200, 250, 300]
+
+# Loop through control parameters
+for idx, a in enumerate(a_values, start=1):
+    # Create separate folders for datasets and plots for each class
+    class_folder = os.path.join(base_dir, f"class_{idx}_a{a:.3f}")
+    data_folder = os.path.join(class_folder, "datasets")
+    plot_folder = os.path.join(class_folder, "plots")
+    os.makedirs(data_folder, exist_ok=True)
+    os.makedirs(plot_folder, exist_ok=True)
+
+    # Loop through initial conditions
+    for x0 in x0_values:
+        # Loop through iteration counts
+        for n in iterations_list:
+            sine_series = sine_map(a, x0, n)
+
+            # Save dataset
+            df = pd.DataFrame(sine_series, columns=["Value"])
+            filename = f"sine_output_a{a:.3f}_x0{x0:.4f}_n{n}.csv"
+            df.to_csv(os.path.join(data_folder, filename), index=False)
+
+            # Save plot
+            plt.plot(range(n), sine_series, linestyle='-', linewidth=1)
+            plt.title(f"a = {a:.3f}, x0 = {x0:.4f}, n = {n}")
+            plt.xlabel('Iteration')
+            plt.ylabel('Value')
+            img_filename = f"sine_img_a{a:.3f}_x0{x0:.4f}_n{n}.png"
+            plt.savefig(os.path.join(plot_folder, img_filename), bbox_inches='tight')
+            plt.close()
