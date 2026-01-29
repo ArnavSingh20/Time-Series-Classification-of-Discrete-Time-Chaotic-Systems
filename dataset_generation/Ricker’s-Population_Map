@@ -1,0 +1,60 @@
+import pandas as pd
+import matplotlib.pyplot as plt
+import numpy as np
+import os
+
+from google.colab import drive
+drive.mount('/content/drive')
+
+base_dir = '/content/drive/MyDrive/Time Series Classification/Ricker’s_Population_Model_Map'
+os.makedirs(base_dir, exist_ok=True)
+
+import numpy as np
+
+def ricker_map(a, x0, n):
+    x = x0
+    sequence = [x]
+    for _ in range(n - 1):
+        x = a * x * np.exp(-x)
+        sequence.append(x)
+    return sequence
+
+# List of control parameters
+a_values = [19.0, 19.126, 19.252, 19.378, 19.504, 19.63, 19.756, 19.882, 20.008, 20.134, 20.26, 20.386, 20.512, 20.638, 20.764, 20.89]
+
+
+# List of initial conditions
+x0_values = [1.0, 1.072, 1.144, 1.216, 1.288, 1.36, 1.432, 1.504, 1.576, 1.648, 1.72, 1.792, 1.864, 1.936]
+
+
+# Number of iterations
+iterations_list = [100, 150, 200, 250, 300]
+
+# Loop through control parameters
+for idx, a in enumerate(a_values, start=1):
+    # Create separate folders for datasets and plots for each class
+    class_folder = os.path.join(base_dir, f"class_{idx}_a{a:.3f}")
+    data_folder = os.path.join(class_folder, "datasets")
+    plot_folder = os.path.join(class_folder, "plots")
+    os.makedirs(data_folder, exist_ok=True)
+    os.makedirs(plot_folder, exist_ok=True)
+
+    # Loop through initial conditions
+    for x0 in x0_values:
+        # Loop through iteration counts
+        for n in iterations_list:
+            Rickers_Population_Model_series = ricker_map(a, x0, n)
+
+            # Save dataset
+            df = pd.DataFrame(Rickers_Population_Model_series, columns=["Value"])
+            filename = f"Ricker’s_Population_Model_output_a{a:.3f}_x0{x0:.4f}_n{n}.csv"
+            df.to_csv(os.path.join(data_folder, filename), index=False)
+
+            # Save plot
+            plt.plot(range(n), Rickers_Population_Model_series, linestyle='-', linewidth=1)
+            plt.title(f"a = {a:.3f}, x0 = {x0:.4f}, n = {n}")
+            plt.xlabel('Iteration')
+            plt.ylabel('Value')
+            img_filename = f"Ricker’s_Population_Model_img_a{a:.3f}_x0{x0:.4f}_n{n}.png"
+            plt.savefig(os.path.join(plot_folder, img_filename), bbox_inches='tight')
+            plt.close()
