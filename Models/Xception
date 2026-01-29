@@ -1,0 +1,88 @@
+import torch
+DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
+print(f"Using device: {DEVICE}")
+
+import tensorflow as tf
+from tensorflow.keras.applications import Xception
+from tensorflow.keras.layers import Dense, GlobalAveragePooling2D
+from tensorflow.keras.models import Model
+from tensorflow.keras.optimizers import Adam
+from tensorflow.keras.preprocessing.image import ImageDataGenerator
+from tensorflow.keras.callbacks import EarlyStopping, ModelCheckpoint
+import os
+
+from google.colab import drive
+drive.mount('/content/drive')
+dataset_dir = '/content/drive/MyDrive/Time Series Classification/Dataset'
+
+# Parameters
+IMG_SIZE = 299  # Xception requires 299x299 input
+BATCH_SIZE = 32
+
+# Data Generators
+train_datagen = ImageDataGenerator(rescale=1./255)
+val_test_datagen = ImageDataGenerator(rescale=1./255)
+
+# Create data generators
+print("Loading data...")
+train_gen = train_datagen.flow_from_directory(
+    os.path.join(dataset_dir, 'train'),
+    target_size=(IMG_SIZE, IMG_SIZE),
+    batch_size=BATCH_SIZE,
+    class_mode='categorical',
+    shuffle=True
+)
+
+val_gen = val_test_datagen.flow_from_directory(
+    os.path.join(dataset_dir, 'val'),
+    target_size=(IMG_SIZE, IMG_SIZE),
+    batch_size=BATCH_SIZE,
+    class_mode='categorical',
+    shuffle=False
+)
+
+test_gen = val_test_datagen.flow_from_directory(
+    os.path.join(dataset_dir, 'test'),
+    target_size=(IMG_SIZE, IMG_SIZE),
+    batch_size=BATCH_SIZE,
+    class_mode='categorical',
+    shuffle=False
+)
+
+print(f"Classes: {train_gen.class_indices}")
+print(f"Train samples: {train_gen.samples}")
+print(f"Validation samples: {val_gen.samples}")
+print(f"Test samples: {test_gen.samples}")
+
+# Build Xception Model
+base_model = Xception(input_shape=(IMG_SIZE, IMG_SIZE, 3), include_top=False, weights='imagenet')
+x = base_model.output
+x = GlobalAveragePooling2D()(x)
+preds = Dense(train_gen.num_classes, activation='softmax')(x)
+model = Model(inputs=base_model.input, outputs=preds)
+
+# Freeze base model layers
+for layer in base_model.layers:
+    layer.trainable = False
+
+model.compile(optimizer=Adam(learning_rate=1e-4), loss='categorical_crossentropy', metrics=['accuracy'])
+
+# Callbacks
+early_stop = EarlyStopping(monitor='val_loss', patience=3, restore_best_weights=True)
+checkpoint = ModelCheckpoint("best_model.h5", monitor='val_loss', save_best_only=True, verbose=1)
+
+print("Starting initial training with frozen base...")
+model.fit(train_gen,
+          epochs=25,
+          validation_data=val_gen,
+          callbacks=[early_stop, checkpoint])
+
+# Evaluate on test set
+print("Evaluating on test set...")
+test_loss, test_accuracy = model.evaluate(test_gen, verbose=1)
+print(f"Test Accuracy: {test_accuracy:.4f}")
+print(f"Test Loss: {test_loss:.4f}")
+
+# Save model
+model.save('/content/drive/MyDrive/Time Series Classification/xception_model.h5')
+print("Model saved successfully!")
