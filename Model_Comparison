@@ -1,0 +1,78 @@
+from google.colab import drive
+drive.mount('/content/drive')
+
+
+import pandas as pd
+import tensorflow as tf
+from tensorflow.keras.models import load_model
+from tensorflow.keras.preprocessing.image import ImageDataGenerator
+import os
+
+# Update paths to your local directories
+dataset_dir = '/content/drive/MyDrive/Time Series Classification/Dataset'
+models_dir =  '/content/drive/MyDrive/Time Series Classification'
+
+# CREATE TEST DATA GENERATOR
+print("Creating test data generator...")
+test_datagen = ImageDataGenerator(rescale=1./255)
+
+test_gen = test_datagen.flow_from_directory(
+    os.path.join(dataset_dir, 'test'),
+    target_size=(224, 224),
+    batch_size=32,
+    class_mode='categorical',
+    shuffle=False
+)
+
+print(f"Test samples found: {test_gen.samples}")
+print(f"Classes: {test_gen.class_indices}")
+
+# Define your models with local paths
+models = {
+    'MobileNetV2': os.path.join(models_dir, 'mobilenetv2_model.h5'),
+    'InceptionV3': os.path.join(models_dir, 'inceptionv3_model.h5'),
+    'Xception': os.path.join(models_dir, 'xception_model.h5'),
+    'DenseNet121': os.path.join(models_dir, 'densenet121_model.h5'),
+    'VGG16': os.path.join(models_dir, 'vgg16_model.h5')
+}
+
+# Compare performance
+results = []
+for name, path in models.items():
+    if os.path.exists(path):
+        print(f"Loading and evaluating {name}...")
+        model = load_model(path)
+
+        # Create appropriate test generator based on model
+        if name in ['InceptionV3', 'Xception']:
+            # These models need 299x299 input
+            test_gen_299 = test_datagen.flow_from_directory(
+                os.path.join(dataset_dir, 'test'),
+                target_size=(299, 299),
+                batch_size=32,
+                class_mode='categorical',
+                shuffle=False
+            )
+            loss, accuracy = model.evaluate(test_gen_299, verbose=0)
+        else:
+            # These models use 224x224 input
+            loss, accuracy = model.evaluate(test_gen, verbose=0)
+
+        results.append({'Model': name, 'Test_Loss': loss, 'Test_Accuracy': accuracy})
+        print(f"{name}: Accuracy = {accuracy:.4f}")
+
+        # Free memory
+        del model
+    else:
+        print(f"Model file not found: {path}")
+
+# Create comparison table
+if results:
+    df = pd.DataFrame(results)
+    df = df.sort_values('Test_Accuracy', ascending=False)
+    print("\n" + "="*50)
+    print("MODEL COMPARISON RESULTS")
+    print("="*50)
+    print(df.to_string(index=False))
+else:
+    print("No models found to evaluate!")
