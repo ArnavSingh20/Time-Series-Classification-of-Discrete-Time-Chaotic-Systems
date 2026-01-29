@@ -1,0 +1,58 @@
+import pandas as pd
+import matplotlib.pyplot as plt
+import numpy as np
+import os
+
+from google.colab import drive
+drive.mount('/content/drive')
+
+base_dir = '/content/drive/MyDrive/Time Series Classification/Cusp_Map'
+os.makedirs(base_dir, exist_ok=True)
+
+def cusp_map(a, x0, n):
+    x = x0
+    sequence = [x]
+    for _ in range(n - 1):
+        x = 1 - a * np.sqrt(abs(x))
+        sequence.append(x)
+    return sequence
+
+# List of control parameters
+a_values = [1.5, 1.5256, 1.5512, 1.5768, 1.6024, 1.628, 1.6536, 1.6792, 1.7048, 1.7304, 1.756, 1.7816, 1.8072, 1.8328, 1.8584, 1.884]
+
+
+# List of initial conditions
+x0_values = [0.1, 0.165, 0.23, 0.295, 0.36, 0.425, 0.49, 0.555, 0.62, 0.685, 0.75, 0.815, 0.88, 0.945]
+
+
+# Number of iterations
+iterations_list = [100, 150, 200, 250, 300]
+
+# Loop through control parameters
+for idx, a in enumerate(a_values, start=1):
+    # Create separate folders for datasets and plots for each class
+    class_folder = os.path.join(base_dir, f"class_{idx}_a{a:.3f}")
+    data_folder = os.path.join(class_folder, "datasets")
+    plot_folder = os.path.join(class_folder, "plots")
+    os.makedirs(data_folder, exist_ok=True)
+    os.makedirs(plot_folder, exist_ok=True)
+
+    # Loop through initial conditions
+    for x0 in x0_values:
+        # Loop through iteration counts
+        for n in iterations_list:
+            cusp_series = cusp_map(a, x0, n)
+
+            # Save dataset
+            df = pd.DataFrame(cusp_series, columns=["Value"])
+            filename = f"cusp_output_a{a:.3f}_x0{x0:.4f}_n{n}.csv"
+            df.to_csv(os.path.join(data_folder, filename), index=False)
+
+            # Save plot
+            plt.plot(range(n), cusp_series, linestyle='-', linewidth=1)
+            plt.title(f"a = {a:.3f}, x0 = {x0:.4f}, n = {n}")
+            plt.xlabel('Iteration')
+            plt.ylabel('Value')
+            img_filename = f"cusp_img_a{a:.3f}_x0{x0:.4f}_n{n}.png"
+            plt.savefig(os.path.join(plot_folder, img_filename), bbox_inches='tight')
+            plt.close()
