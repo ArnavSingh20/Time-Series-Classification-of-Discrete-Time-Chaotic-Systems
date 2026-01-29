@@ -1,0 +1,60 @@
+import pandas as pd
+import matplotlib.pyplot as plt
+import numpy as np
+import os
+
+from google.colab import drive
+drive.mount('/content/drive')
+
+base_dir = '/content/drive/MyDrive/Time Series Classification/Pinchers_Map'
+os.makedirs(base_dir, exist_ok=True)
+
+#Pinchers Map
+def pinchers_map(s, a, x0, n):
+    x = x0
+    sequence = [x]
+    for _ in range(n - 1):
+        x = abs(np.tanh(s * (x - a)))
+        sequence.append(x)
+    return sequence
+
+
+# List of control parameters
+a_values = [0.49, 0.4938, 0.4976, 0.5014, 0.5052, 0.509, 0.5128, 0.5166, 0.5204, 0.5242, 0.528, 0.5318, 0.5356, 0.5394, 0.5432, 0.547]
+
+
+# List of initial conditions
+x0_values = [0.0, 0.072, 0.144, 0.216, 0.288, 0.36, 0.432, 0.504, 0.576, 0.648, 0.72, 0.792, 0.864, 0.936]
+
+
+# Number of iterations
+iterations_list = [100, 150, 200, 250, 300]
+
+# Loop through control parameters
+for idx, a in enumerate(a_values, start=1):
+    # Create separate folders for datasets and plots for each class
+    class_folder = os.path.join(base_dir, f"class_{idx}_a{a:.3f}")
+    data_folder = os.path.join(class_folder, "datasets")
+    plot_folder = os.path.join(class_folder, "plots")
+    os.makedirs(data_folder, exist_ok=True)
+    os.makedirs(plot_folder, exist_ok=True)
+
+    # Loop through initial conditions
+    for x0 in x0_values:
+        # Loop through iteration counts
+        for n in iterations_list:
+            pinchers_series = pinchers_map(s=2.0,a, x0, n)
+
+            # Save dataset
+            df = pd.DataFrame(pinchers_series, columns=["Value"])
+            filename = f"pinchers_output_a{a:.3f}_x0{x0:.4f}_n{n}.csv"
+            df.to_csv(os.path.join(data_folder, filename), index=False)
+
+            # Save plot
+            plt.plot(range(n), pinchers_series, linestyle='-', linewidth=1)
+            plt.title(f"a = {a:.3f}, x0 = {x0:.4f}, n = {n}")
+            plt.xlabel('Iteration')
+            plt.ylabel('Value')
+            img_filename = f"pinchers_img_a{a:.3f}_x0{x0:.4f}_n{n}.png"
+            plt.savefig(os.path.join(plot_folder, img_filename), bbox_inches='tight')
+            plt.close()
